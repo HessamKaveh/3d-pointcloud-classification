@@ -58,3 +58,7 @@ results/
 ├── confusion_matrix.png
 └── pointcloud_samples.png
 ```
+
+
+## Author
+Hessam Kaveh — Research Fellow, Italian Institute of Technology (IIT)
