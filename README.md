@@ -2,6 +2,9 @@
 
 PyTorch implementation of a PointNet-style classifier for ModelNet40.
 
+<p align="center"><img src="results/pointcloud_samples.png" width="85%"><br>
+<em>Sample ModelNet40 test objects with predicted labels.</em></p>
+
 ## What this project does
 
 - Downloads the preprocessed ModelNet40 HDF5 dataset.
@@ -59,6 +62,22 @@ results/
 └── pointcloud_samples.png
 ```
 
+## Results
+
+| Metric | Value |
+|---|---|
+| Test accuracy (official ModelNet40 test split, 2,468 objects) | **86.2 %** |
+| Macro F1 | 0.821 |
+| Best validation accuracy | 89.8 % |
+| Epochs | 50 |
+
+<p align="center"><img src="results/training_curves.png" width="85%"></p>
+
+<p align="center"><img src="results/confusion_matrix.png" width="85%"></p>
 
 ## Author
 Hessam Kaveh — Research Fellow, Italian Institute of Technology (IIT)
+
+## License
+
+Released under the [MIT License](LICENSE).
