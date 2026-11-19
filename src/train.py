@@ -1,168 +1,81 @@
-import os
+"""Train a point-cloud classifier on ModelNet40.
+
+    python src/train.py --model pointnet --aug cad  --seed 0     # standard benchmark training
+    python src/train.py --model dgcnn    --aug scan --seed 0     # trained on simulated depth scans
+
+A fixed epoch budget is used and the last epoch is kept (no checkpoint selection on the test set).
+"""
+import argparse
 import json
-import random
+import os
+import time
+
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
-from dataset import get_dataloaders, NUM_CLASSES
-from model import PointNet
+import data
+from model import build
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
-os.makedirs(RESULTS_DIR, exist_ok=True)
-
-SEED = 42
-BATCH_SIZE = 32
-NUM_EPOCHS = 50
-LEARNING_RATE = 1e-3
-WEIGHT_DECAY = 1e-4
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULTS = {"pointnet": dict(epochs=200, batch=32), "dgcnn": dict(epochs=100, batch=16)}
 
 
-def set_seed(seed=SEED):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default="pointnet", choices=["pointnet", "dgcnn"])
+    ap.add_argument("--aug", default="cad", choices=["cad", "scan"])
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--epochs", type=int, default=None)
+    ap.add_argument("--workers", type=int, default=16)
+    a = ap.parse_args()
+    cfg = DEFAULTS[a.model]
+    epochs = a.epochs or cfg["epochs"]
+    tag = f"{a.model}_{a.aug}_s{a.seed}"
+    torch.manual_seed(a.seed); np.random.seed(a.seed)
+    dev = torch.device("cuda")
 
+    P, N, L = data.load("train")
+    loader = DataLoader(data.Train(P, N, L, a.aug), batch_size=cfg["batch"], shuffle=True, drop_last=True,
+                        num_workers=a.workers, persistent_workers=True,
+                        worker_init_fn=lambda w: np.random.seed((a.seed * 1000 + w) % 2**32))
+    Pt, Nt, Lt = data.load("test")
+    test = DataLoader(data.Test(Pt, Nt, Lt, "cad", views=1), batch_size=64, num_workers=8)
 
-def run_epoch(model, loader, criterion, device, optimizer=None):
-    is_training = optimizer is not None
-    model.train(is_training)
-
-    running_loss = 0.0
-    correct = 0
-    total = 0
-
-    context = torch.enable_grad() if is_training else torch.no_grad()
-    with context:
-        for points, labels in loader:
-            points = points.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-
-            if is_training:
-                optimizer.zero_grad(set_to_none=True)
-
-            logits = model(points)
-            loss = criterion(logits, labels)
-
-            if is_training:
-                loss.backward()
-                optimizer.step()
-
-            batch_size = labels.size(0)
-            running_loss += loss.item() * batch_size
-            correct += (logits.argmax(dim=1) == labels).sum().item()
-            total += batch_size
-
-    return running_loss / total, correct / total
-
-
-def save_training_curves(history):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-    axes[0].plot(history["train_loss"], label="Train")
-    axes[0].plot(history["val_loss"], label="Validation")
-    axes[0].set_xlabel("Epoch")
-    axes[0].set_ylabel("Cross-entropy loss")
-    axes[0].set_title("Loss")
-    axes[0].legend()
-
-    axes[1].plot(history["train_acc"], label="Train")
-    axes[1].plot(history["val_acc"], label="Validation")
-    axes[1].set_xlabel("Epoch")
-    axes[1].set_ylabel("Accuracy")
-    axes[1].set_title("Classification accuracy")
-    axes[1].legend()
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, "training_curves.png"), dpi=150)
-    plt.close(fig)
-
-
-def train():
-    set_seed()
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    train_loader, val_loader = get_dataloaders(
-        batch_size=BATCH_SIZE,
-        val_fraction=0.1,
-        seed=SEED,
-    )
-
-    print(f"Training samples:   {len(train_loader.dataset)}")
-    print(f"Validation samples: {len(val_loader.dataset)}")
-
-    model = PointNet(num_classes=NUM_CLASSES).to(device)
-
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(
-        model.parameters(),
-        lr=LEARNING_RATE,
-        weight_decay=WEIGHT_DECAY,
-    )
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=NUM_EPOCHS,
-    )
-
-    history = {
-        "train_loss": [],
-        "train_acc": [],
-        "val_loss": [],
-        "val_acc": [],
-    }
-
-    best_acc = -1.0
-    best_path = os.path.join(RESULTS_DIR, "best_pointnet.pt")
-
-    for epoch in range(1, NUM_EPOCHS + 1):
-        train_loss, train_acc = run_epoch(
-            model, train_loader, criterion, device, optimizer
-        )
-        val_loss, val_acc = run_epoch(
-            model, val_loader, criterion, device
-        )
-        scheduler.step()
-
-        history["train_loss"].append(train_loss)
-        history["train_acc"].append(train_acc)
-        history["val_loss"].append(val_loss)
-        history["val_acc"].append(val_acc)
-
-        print(
-            f"Epoch {epoch:02d}/{NUM_EPOCHS} | "
-            f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | "
-            f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
-        )
-
-        if val_acc > best_acc:
-            best_acc = val_acc
-            torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "num_classes": NUM_CLASSES,
-                    "num_points": 1024,
-                    "best_val_acc": best_acc,
-                    "epoch": epoch,
-                },
-                best_path,
-            )
-
-    with open(os.path.join(RESULTS_DIR, "history.json"), "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2)
-
-    save_training_curves(history)
-
-    print(f"\nBest validation accuracy: {best_acc:.4f}")
-    print(f"Best checkpoint: {best_path}")
-    print("Run evaluation with: python src/evaluate.py")
+    model = build(a.model).to(dev)
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=1e-3, total_steps=epochs * len(loader), pct_start=0.05)
+    crit = nn.CrossEntropyLoss(label_smoothing=0.2)
+    scaler = torch.amp.GradScaler()
+    hist = {"loss": [], "train_acc": [], "cad_acc": [], "sec": []}
+    t0 = time.time()
+    for ep in range(epochs):
+        model.train()
+        tot = cor = n = 0
+        for x, y in loader:
+            x, y = x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
+            with torch.autocast("cuda", dtype=torch.float16):
+                out = model(x)
+                loss = crit(out.float(), y)
+            opt.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+            scaler.step(opt); scaler.update(); sched.step()
+            tot += loss.item() * len(y); cor += (out.argmax(1) == y).sum().item(); n += len(y)
+        hist["loss"].append(tot / n); hist["train_acc"].append(cor / n); hist["sec"].append(time.time() - t0)
+        if ep % 10 == 9 or ep == epochs - 1:     # monitoring only; never used to pick a checkpoint
+            model.eval(); c = m = 0
+            with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
+                for x, y, _ in test:
+                    c += (model(x.to(dev)).argmax(1).cpu() == y).sum().item(); m += len(y)
+            hist["cad_acc"].append((ep + 1, c / m))
+            print(f"{tag} ep {ep + 1}/{epochs} loss {tot / n:.3f} train {cor / n:.3f} cad-test {c / m:.3f} "
+                  f"({(time.time() - t0) / 60:.1f} min)", flush=True)
+    os.makedirs(os.path.join(ROOT, "cache"), exist_ok=True)
+    os.makedirs(os.path.join(ROOT, "results", "history"), exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(ROOT, "cache", f"{tag}.pt"))
+    json.dump(hist, open(os.path.join(ROOT, "results", "history", f"{tag}.json"), "w"))
 
 
 if __name__ == "__main__":
-    train()
+    main()
