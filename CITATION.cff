@@ -8,5 +8,6 @@ authors:
     affiliation: "Istituto Italiano di Tecnologia (IIT)"
 repository-code: "https://github.com/HessamKaveh/3d-pointcloud-classification"
 license: MIT
+doi: 10.5281/zenodo.24465869
 version: 1.0.0
 date-released: "2026-11-23"

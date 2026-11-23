@@ -1,6 +1,6 @@
 # Does a point-cloud classifier survive a real depth camera?
 
-[![CI](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml) ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml) ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24465869.svg)](https://doi.org/10.5281/zenodo.24465869)
 
 ### ModelNet40 accuracy vs. what a robot's RGB-D camera actually sees
 
@@ -213,6 +213,7 @@ If you use this code, please cite it (metadata in [`CITATION.cff`](CITATION.cff)
   title   = {Does a point-cloud classifier survive a real depth camera?},
   year    = {2026},
   version = {1.0.0},
+  doi     = {10.5281/zenodo.24465869},
   url     = {https://github.com/HessamKaveh/3d-pointcloud-classification},
   license = {MIT}
 }
