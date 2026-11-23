@@ -1,5 +1,7 @@
 # Does a point-cloud classifier survive a real depth camera?
 
+[![CI](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/HessamKaveh/3d-pointcloud-classification/actions/workflows/ci.yml) ![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ### ModelNet40 accuracy vs. what a robot's RGB-D camera actually sees
 
 ModelNet40 is the standard benchmark for 3D object classification. Its point clouds are sampled **uniformly from the
@@ -200,6 +202,21 @@ src/outlier_filter.py  statistical outlier removal baseline
 * Katz, Tal, Basri. *Direct Visibility of Point Sets.* ACM TOG 2007.
 * Uy, Pham, Hua, Nguyen, Yeung. *Revisiting Point Cloud Classification: A New Benchmark Dataset and Classification Model on Real-World Data* (ScanObjectNN). ICCV 2019.
 * Angelopoulos, Bates. *A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification.* 2021.
+
+## Citation
+
+If you use this code, please cite it (metadata in [`CITATION.cff`](CITATION.cff)):
+
+```bibtex
+@software{kaveh2026_3d_pointcloud_classification,
+  author  = {Kaveh, Hessam},
+  title   = {Does a point-cloud classifier survive a real depth camera?},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://github.com/HessamKaveh/3d-pointcloud-classification},
+  license = {MIT}
+}
+```
 
 ---
 

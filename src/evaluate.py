@@ -201,7 +201,6 @@ def main():
 def figures(R, probs, P, N, L, names):
     A = R["accuracy"]
     # 1. examples
-    rng = np.random.default_rng(3)
     ex = [np.where(L == names.index(n))[0][0] for n in ["chair", "airplane", "lamp", "toilet"]]
     conds = ["cad", "view", "noise_s2", "flying_s2", "plane_s2", "realistic"]
     titles = ["CAD (benchmark)", "single view", "depth noise 1.5 m", "flying pixels 10 %", "table leftovers 25 %",
